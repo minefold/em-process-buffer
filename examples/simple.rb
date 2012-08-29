@@ -25,9 +25,9 @@ module Watcher
   end
 end
 
-`mkdir -p tmp/1`
+`mkdir -p tmp/simple`
 
 EM.run do
   puts "watcher started pid=#{Process.pid}"
-  EM.buffer_process 'tmp/pid.1', 'tmp/1', File.join(File.expand_path(File.dirname(__FILE__)), 'in-out'), Watcher
+  EM.buffer_process 'tmp/simple.pid', 'tmp/simple', File.join(File.expand_path(File.dirname(__FILE__)), 'in-out'), Watcher
 end

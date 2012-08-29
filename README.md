@@ -22,5 +22,7 @@ QUIT will gracefully stop the watching process. TERM will kill the watcher and t
 	
 	# back in terminal 1 restart the watcher
 	$ ruby examples/simple.rb
+	watcher started pid=8418
+	found running process pid=7869 pid_file=tmp/simple.pid
 	[7869] [STDIN 5.34] hello
 	[7869] [STDIN 6.84] hello

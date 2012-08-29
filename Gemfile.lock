@@ -4,6 +4,13 @@ GIT
   specs:
     eventmachine (1.0.0.rc.4)
 
+PATH
+  remote: .
+  specs:
+    em-process-buffer (0.0.1)
+      eventmachine (~> 1.0.0.rc.4)
+      posix-spawn (~> 0.3.6)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -13,5 +20,6 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  em-process-buffer!
   eventmachine!
   posix-spawn (= 0.3.6)
