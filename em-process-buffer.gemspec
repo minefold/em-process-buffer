@@ -9,6 +9,7 @@ Gem::Specification.new do |gem|
   gem.authors       = ["Dave Newman"]
   gem.email         = ["dave@whatupdave.com"]
   gem.description   = %q{A restartable process watcher that buffers STDIN and STDOUT}
+  gem.summary       = %q{A restartable process watcher that buffers STDIN and STDOUT}
   gem.homepage      = "https://github.com/minefold/em-process-buffer"
 
   gem.files         = `git ls-files`.split($/)
