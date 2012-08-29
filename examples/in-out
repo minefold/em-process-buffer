@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+
+$stdout.sync = true
+i = 0
+started_at = Time.now
+while true
+  puts "[STDIN #{(Time.now - started_at).round(2)}] #{gets}"
+  i += 1
+end

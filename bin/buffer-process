@@ -1,0 +1,158 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+require 'posix/spawn'
+
+module Process
+  def self.alive?(pid)
+    begin
+      Process.kill(0, pid)
+      true
+    rescue Errno::ESRCH
+      false
+    end
+  end
+
+  def self.child command
+    POSIX::Spawn::Child.new command
+  end
+end
+
+class IOBuffer
+  def buffer
+    @buffer ||= []
+  end
+
+  def tick
+    # puts "[#{Process.pid}] [#{self.class.name}] tick"
+
+    if IO.select([io_in], nil, nil, 0.5)
+      begin
+        incoming = io_in.read_nonblock 1024
+        # p incoming
+        if incoming
+          buffer << incoming
+        end
+      rescue EOFError
+      end
+    end
+
+    begin
+      item = nil
+      while buffer.any?
+        item = buffer.shift
+        io_out.write item
+      end
+    rescue Errno::EPIPE
+      buffer.unshift item
+    end
+  end
+end
+
+class IOBufferIn < IOBuffer
+  # named_pipe > IO
+
+  attr_reader :io_out
+
+  def initialize pipe_in_file, io_out
+    @pipe_in_file, @io_out = pipe_in_file, io_out
+    io_out.sync = true
+
+    system "mkfifo #{@pipe_in_file}"
+  end
+
+  def io_in
+    @io_in ||= File.open(@pipe_in_file, File::NONBLOCK + File::RDONLY)
+  end
+
+  def cleanup
+    @io_in.close if @io_in
+    system "rm -f #{@pipe_in_file}"
+  end
+end
+
+class IOBufferOut < IOBuffer
+  # IO > named pipe
+
+  attr_reader :io_in
+  attr_reader :io_out
+
+  def initialize io_in, pipe_out_file
+    @pipe_out_file, @io_in = pipe_out_file, io_in
+
+    system "mkfifo #{@pipe_out_file}"
+  end
+
+  def io_out
+    @io_out ||= begin
+      io_out = File.open(@pipe_out_file, 'w+')
+      io_out.sync = true
+      io_out
+    end
+  end
+
+  def cleanup
+    @io_out.close if @io_out
+    system "rm -f #{@pipe_out_file}"
+  end
+end
+
+
+pipe_directory = working_directory = Process.child('pwd').out.strip
+pid_file = nil
+
+opts = OptionParser.new do |opts|
+  opts.banner = "Usage: #{$0} [-d pipe_directory] [-C working_directory] [-p pid_file] command"
+
+  opts.separator ""
+  opts.on("-d", "--directory directory", "pipe directory") { |dir|
+    pipe_directory = File.expand_path(dir)
+  }
+  opts.on("-C", "--directory directory", "working directory") { |dir|
+    working_directory = File.expand_path(dir)
+  }
+  opts.on("-p", "--pid pid_file", "pid file") { |file|
+    pid_file = File.expand_path(file)
+  }
+
+  opts.on_tail("-h", "--help", "Show this message") do
+    puts opts
+    abort
+  end
+end
+
+opts.parse!(ARGV)
+
+command = ARGV.first
+
+pipe_stdin_file, pipe_stdout_file = "#{pipe_directory}/pipe_stdin",  "#{pipe_directory}/pipe_stdout"
+
+pid, children, stdin_buffer, stdout_buffer = nil, nil, nil, nil
+
+begin
+  Dir.chdir(working_directory) do
+    pid, stdin, stdout = POSIX::Spawn::popen4("exec #{command} 2>&1")
+
+    File.write(pid_file, pid) if pid_file
+    puts "process started with pid=#{pid}"
+
+    stdin_buffer = IOBufferIn.new(pipe_stdin_file, stdin)
+    stdout_buffer = IOBufferOut.new(stdout, pipe_stdout_file)
+
+    loop do
+      stdout_buffer.tick
+      stdin_buffer.tick
+
+      if Process.waitpid(pid, Process::WNOHANG)
+        puts "process exited pid=#{pid}"
+        break
+      end
+    end
+  end
+ensure
+  puts "cleaning up"
+  stdin_buffer.cleanup if stdin_buffer
+  stdout_buffer.cleanup if stdout_buffer
+
+  Process.child "rm -f #{pid_file}" if pid_file
+end
