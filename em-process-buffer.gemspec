@@ -5,7 +5,7 @@ require 'eventmachine/process_buffer/version'
 
 Gem::Specification.new do |gem|
   gem.name          = "em-process-buffer"
-  gem.version       = Gem::VERSION
+  gem.version       = EM::ProcessBuffer::VERSION
   gem.authors       = ["Dave Newman"]
   gem.email         = ["dave@whatupdave.com"]
   gem.description   = %q{A restartable process watcher that buffers STDIN and STDOUT}
