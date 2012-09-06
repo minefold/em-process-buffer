@@ -4,7 +4,7 @@ module EM
     class Watcher
       attr_reader :pid, :pid_file, :pipe_directory, :working_directory
 
-      def initialize pid_file, pipe_directory, working_directory
+      def initialize pid_file, pipe_directory, working_directory, *args
         @pid_file = pid_file
         @pipe_directory = pipe_directory
         @working_directory = working_directory
@@ -16,6 +16,13 @@ module EM
 
       def receive_stdout line
         puts ">> #{line}"
+      end
+
+      def process_started
+        puts "watched process started"
+      end
+
+      def process_watched
       end
 
       def process_exited
@@ -36,10 +43,13 @@ module EM
         end
 
         EM::PidPoller.on_exit pid, method(:process_exited)
-        
-        EM.next_tick { post_init }
+
+        EM.next_tick {
+          post_init
+          process_watched
+        }
       end
-      
+
       def send_stdin line
         File.open(pipe_stdin, 'w+') do |f|
           f.write "#{line}\n"
